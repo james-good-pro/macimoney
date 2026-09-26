@@ -1,0 +1,12 @@
+name = "macimoney"
+main = "src/index.js"
+compatibility_date = "2026-09-08"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "macimoney-db"
+database_id = "305d38d5-9720-420f-a186-2982636b5bc2"

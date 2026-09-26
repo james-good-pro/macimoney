@@ -1,0 +1,49 @@
+MaciMoney — Update & Deploy Instructions
+=========================================
+
+Workflow: Claude edits code in this folder -> you commit to GitHub (optional)
+-> you deploy to Cloudflare with one command.
+
+1) Review changes (optional)
+-----------------------------
+cd ~/Desktop/AnnieApp/macimoney-worker
+git status
+git diff
+
+2) Commit and push to GitHub (optional, keeps version history)
+-----------------------------------------------------------------
+git add -A
+git commit -m "describe the change"
+git push
+
+3) Deploy to Cloudflare (this is what actually makes the change live)
+--------------------------------------------------------------------
+npx wrangler deploy
+
+That's it — within seconds, https://macimoney.jamesgood2002.workers.dev
+serves the updated code. Annabelle doesn't need to do anything; she'll
+just see the new version next time she loads the page.
+
+4) ONLY if a change alters the database structure
+-----------------------------------------------------
+(e.g. adding a new column/table — NOT needed for normal feature or style
+changes, only true schema changes)
+
+Run this BEFORE `npx wrangler deploy`:
+
+npx wrangler d1 execute macimoney-db --remote --file=./schema.sql
+
+Quick reference
+---------------
+- Project folder:   ~/Desktop/AnnieApp/macimoney-worker
+- GitHub repo:      james-good-pro/macimoney
+- Live URL:         https://macimoney.jamesgood2002.workers.dev
+- D1 database:      macimoney-db  (id: 305d38d5-9720-420f-a186-2982636b5bc2)
+- Local dev server: npx wrangler dev   (test locally before deploying)
+
+Notes
+-----
+- git push is optional and only affects version history on GitHub — it does
+  NOT deploy anything. Only `npx wrangler deploy` makes changes live.
+- Claude writes code changes directly into this folder; you still run the
+  commands above from your own terminal to push/deploy them.

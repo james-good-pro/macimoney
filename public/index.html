@@ -1,0 +1,1474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MaciMoney</title>
+<meta name="description" content="A sparkly personal finance home for Annabelle.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩵</text></svg>">
+
+<!-- Controls the icon iOS/Chrome use for "Add to Home Screen" shortcuts.
+     No manifest / app-install meta tags on purpose — this is just an icon
+     hint, it doesn't trigger any install banner or prompt. -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@400;500;600;700&display=swap');
+
+  :root {
+    --pink: #ff5fa2;
+    --pink-deep: #e13e85;
+    --pink-soft: #ffdcec;
+    --lav: #b98af0;
+    --lav-soft: #ecdcfb;
+    --gold: #ffc857;
+    --gold-soft: #fff0cf;
+    --gold-ink: #96661c;
+    --ink: #5c2a45;
+    --ink-dim: #a8708c;
+    --bg: #fff3f9;
+    --surface: #ffffff;
+    --line: #ffd9ec;
+    --shadow: 0 2px 4px rgba(225, 62, 133, 0.08), 0 14px 32px -16px rgba(225, 62, 133, 0.35);
+    --radius: 22px;
+    /* fixed jewel tones for the affirmation banner: deep enough that white
+       text stays readable (>4.5:1) in both light and dark themes, so these
+       are intentionally NOT redefined in the dark-mode blocks below */
+    --affirm-1: #c22a72;
+    --affirm-2: #6b3fc9;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --pink: #ff8ec2;
+      --pink-deep: #ffaad4;
+      --pink-soft: #4a2038;
+      --lav: #d3aef8;
+      --lav-soft: #3a2650;
+      --gold: #ffd685;
+      --gold-soft: #4a3a1e;
+      --gold-ink: #ffd685;
+      --ink: #ffe4f1;
+      --ink-dim: #d9a4c1;
+      --bg: #29101f;
+      --surface: #35172a;
+      --line: #52233f;
+      --shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 16px 34px -16px rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --pink: #ff8ec2;
+    --pink-deep: #ffaad4;
+    --pink-soft: #4a2038;
+    --lav: #d3aef8;
+    --lav-soft: #3a2650;
+    --gold: #ffd685;
+    --gold-soft: #4a3a1e;
+    --gold-ink: #ffd685;
+    --ink: #ffe4f1;
+    --ink-dim: #d9a4c1;
+    --bg: #29101f;
+    --surface: #35172a;
+    --line: #52233f;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 16px 34px -16px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    background: var(--bg);
+    min-height: 100%;
+    color-scheme: light dark;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    min-height: 100dvh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .page {
+    position: relative;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 40px 22px 80px;
+    z-index: 1;
+  }
+
+  /* floating confetti hearts + sparkles — decorates the hero greeting
+     (affirmation banner through the "for Annabelle" line), including the
+     stat-bubble/photo row. .hero-wrap is the positioned ancestor, sized by
+     its own in-flow content, so this never bleeds into the sections below
+     it regardless of how tall the page grows (it used to be a fixed 620px
+     measured against the whole page, which drifted out of sync and ended
+     up floating a heart on top of the "Log a shift" form once that section
+     was added).
+     z-index is bumped above 0 (not just "positioned") because .hero-photo
+     has its own `transform`, which promotes it to its own stacking context
+     — without this, confetti positioned "behind" the photo would render
+     underneath the photo's opaque image instead of floating over it.
+     `isolation: isolate` on .hero-wrap pins that comparison to right here
+     (rather than possibly resolving several levels up, against unrelated
+     stuff elsewhere on the page), so the z-index below is guaranteed to
+     win against .hero-photo's own stacking context. */
+  .hero-wrap { position: relative; isolation: isolate; }
+
+  .confetti {
+    position: absolute;
+    inset: 0;
+    max-width: 640px;
+    margin: 0 auto;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .confetti svg {
+    position: absolute;
+    opacity: 0.55;
+    animation: bob 6s ease-in-out infinite;
+  }
+
+  /* around the affirmation banner */
+  .confetti svg:nth-child(1) { top: 3%; left: 6%; width: 22px; animation-delay: 0s; }
+  .confetti svg:nth-child(2) { top: 11%; right: 7%; width: 16px; animation-delay: 1.1s; }
+  /* flanking the stat bubbles (left) and the photo (right) */
+  .confetti svg:nth-child(3) { top: 21%; left: 2%; width: 14px; animation-delay: 2.2s; }
+  .confetti svg:nth-child(4) { top: 27%; right: 5%; width: 18px; animation-delay: 0.6s; }
+  .confetti svg:nth-child(5) { top: 47%; right: 9%; width: 13px; animation-delay: 2.8s; }
+  /* below, around the title/tagline */
+  .confetti svg:nth-child(6) { top: 59%; left: 9%; width: 16px; animation-delay: 1.4s; }
+  .confetti svg:nth-child(7) { top: 69%; right: 15%; width: 13px; animation-delay: 3.2s; }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-14px) rotate(8deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .confetti svg { animation: none; }
+  }
+
+  .affirmation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--affirm-1), var(--affirm-2));
+    color: #fff;
+    font-family: 'Fredoka', 'Quicksand', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 14px 20px;
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+  }
+
+  .affirmation-icon {
+    display: inline-block;
+    animation: sparkle 2.2s ease-in-out infinite;
+  }
+
+  .affirmation-icon.delay { animation-delay: 1.1s; }
+
+  @keyframes sparkle {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    50% { transform: scale(1.25) rotate(15deg); opacity: 0.75; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .affirmation-icon { animation: none; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.75); }
+  }
+
+  /* stats row: five little stat bubbles stacked on the left, the header
+     photo filling the right side. Bubble text is allowed to wrap to a
+     second line rather than truncate — the numbers in them matter, so an
+     ellipsis would hide the one thing the bubble exists to show. */
+  .stats-row {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .stats-col {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .stat-bubble {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 7px 10px;
+    box-shadow: var(--shadow);
+  }
+
+  .stat-icon {
+    flex: none;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .stat-text {
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 11.5px;
+    line-height: 1.3;
+    color: var(--ink);
+    min-width: 0;
+  }
+
+  @media (min-width: 480px) {
+    .stat-text { font-size: 13px; }
+    .stat-bubble { padding: 9px 13px; border-radius: 16px; }
+  }
+
+  .hero-photo {
+    flex: none;
+    width: 112px;
+    aspect-ratio: 3 / 4;
+    align-self: center;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 4px solid var(--surface);
+    box-shadow: var(--shadow);
+    background: var(--line);
+    transform: rotate(-3deg);
+  }
+
+  @media (min-width: 480px) {
+    .hero-photo { width: 150px; }
+  }
+
+  .hero-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  header.hero { margin-top: 24px; }
+
+  h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: clamp(38px, 10.5vw, 58px);
+    line-height: 1.05;
+    margin: 0;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+    background: linear-gradient(120deg, var(--pink-deep), var(--pink) 55%, var(--lav));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .tagline {
+    font-size: 17px;
+    color: var(--ink-dim);
+    max-width: 42ch;
+    margin: 14px 0 0;
+    text-wrap: balance;
+  }
+
+  .sprig {
+    margin: 30px 0 8px;
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .from {
+    margin-top: 18px;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink-dim);
+  }
+
+  section.growing { margin-top: 50px; }
+
+  .growing h2 {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    margin: 0 0 4px;
+    color: var(--pink-deep);
+  }
+
+  .growing p.sub {
+    margin: 0 0 22px;
+    color: var(--ink-dim);
+    font-size: 14.5px;
+    max-width: 46ch;
+  }
+
+  .beds {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  @media (min-width: 480px) {
+    .beds { grid-template-columns: 1fr 1fr; }
+  }
+
+  .bed {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bed { transition: none; }
+  }
+
+  .bed:hover { transform: translateY(-3px) rotate(-0.5deg); }
+
+  .bed .icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bed .icon svg { width: 19px; height: 19px; }
+
+  .bed .icon.pink { background: var(--pink-soft); color: var(--pink-deep); }
+  .bed .icon.lav { background: var(--lav-soft); color: var(--lav); }
+  .bed .icon.gold { background: var(--gold-soft); color: var(--gold-ink); }
+
+  .bed .name {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .bed .desc {
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin: -4px 0 2px;
+  }
+
+  .tag {
+    align-self: flex-start;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--pink-deep);
+    background: var(--pink-soft);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 600;
+  }
+
+  footer .heart { color: var(--pink); }
+
+  /* ---- Log a shift ---- */
+
+  .shift-section { margin-top: 50px; }
+
+  .shift-section h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    margin: 0 0 4px;
+    color: var(--pink-deep);
+  }
+
+  .tag.live {
+    background: linear-gradient(135deg, var(--affirm-1), var(--affirm-2));
+    color: #fff;
+  }
+
+  .shift-section .sub {
+    margin: 0 0 18px;
+    color: var(--ink-dim);
+    font-size: 14.5px;
+    max-width: 46ch;
+  }
+
+  .shift-form {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    display: grid;
+    /* Date stacked above CC tips on narrow screens: mobile Safari's native
+       date control resists our CSS sizing (it can silently ignore an
+       explicit height), so side-by-side risks the two boxes' bottoms not
+       lining up. Stacked, any size mismatch just adds a little harmless
+       space instead of the boxes visually colliding. */
+    grid-template-columns: 1fr;
+    gap: 14px 12px;
+  }
+
+  @media (min-width: 480px) {
+    .shift-form { grid-template-columns: 1fr 1fr auto; align-items: end; }
+  }
+
+  /* .shift-form's own `display: grid` would otherwise override the
+     browser's default `[hidden] { display: none }` rule (author styles
+     beat the UA stylesheet regardless of specificity) — so anything using
+     that class needs this to actually respect the hidden attribute. */
+  .shift-form[hidden] { display: none; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+  .field label {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  input[type="date"], .money-input {
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 10px 12px;
+    width: 100%;
+    height: 46px;
+  }
+
+  /* Safari's native date control can silently ignore author CSS like our
+     explicit height above — it has its own internal sizing that our box
+     model doesn't fully govern. Turning off the native appearance hands
+     full control of the box to our own CSS instead (the field is still
+     tappable anywhere to open the date picker; only the native chrome
+     goes away, and this page draws its own border/background anyway). */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="date"]::-webkit-datetime-edit {
+    padding: 0;
+    line-height: 1;
+  }
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="date"]::-webkit-datetime-edit-text,
+  input[type="date"]::-webkit-datetime-edit-day-field,
+  input[type="date"]::-webkit-datetime-edit-month-field,
+  input[type="date"]::-webkit-datetime-edit-year-field {
+    padding: 0;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    padding: 0;
+    margin: 0;
+  }
+
+  input[type="date"] { color-scheme: light; }
+  :root:not([data-theme="light"]) input[type="date"] { color-scheme: dark; }
+  :root[data-theme="dark"] input[type="date"] { color-scheme: dark; }
+
+  input[type="date"]:focus {
+    outline: none;
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-soft);
+  }
+
+  .money-input { display: flex; align-items: center; gap: 4px; }
+  .money-input span { color: var(--ink-dim); font-weight: 700; }
+  .money-input input {
+    border: none;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    width: 100%;
+    min-width: 0;
+  }
+  .money-input input:focus { outline: none; }
+  .money-input:focus-within {
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-soft);
+  }
+
+  #shift-submit {
+    grid-column: 1 / -1;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--affirm-1), var(--affirm-2));
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.15s ease;
+  }
+
+  @media (min-width: 480px) { #shift-submit { grid-column: auto; } }
+  @media (prefers-reduced-motion: reduce) { #shift-submit { transition: none; } }
+
+  #shift-submit:hover { transform: translateY(-2px); }
+  #shift-submit:active { transform: translateY(0); }
+  #shift-submit:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+  .form-error {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pink-deep);
+    min-height: 1.2em;
+  }
+
+  .sync-note {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--ink-dim);
+  }
+
+  .table-card {
+    margin-top: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .table-scroll { max-height: 320px; overflow-y: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--pink-soft);
+    color: var(--pink-deep);
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 14px;
+    z-index: 1;
+  }
+
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  td {
+    padding: 9px 14px;
+    border-top: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  tbody tr.band-a { background: color-mix(in srgb, var(--pink) 7%, transparent); }
+  tbody tr.band-b { background: color-mix(in srgb, var(--lav) 9%, transparent); }
+  td.total { font-weight: 700; color: var(--pink-deep); }
+  td.empty { text-align: center; color: var(--ink-dim); padding: 20px; white-space: normal; }
+
+  .chart-card {
+    margin-top: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 16px 8px;
+  }
+
+  .chart-card h3 {
+    margin: 0 0 6px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--ink);
+  }
+
+  .chart-card svg { width: 100%; height: auto; display: block; }
+
+  /* ---- row actions: edit / delete a logged shift ---- */
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  th.actions-col { width: 1%; padding-right: 10px; }
+
+  td.actions-cell {
+    text-align: right;
+    white-space: nowrap;
+    width: 1%;
+    padding-right: 10px;
+  }
+
+  .row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+  }
+
+  .row-actions.confirm { gap: 6px; }
+
+  .confirm-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pink-deep);
+    white-space: nowrap;
+  }
+
+  .row-action-error {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--pink-deep);
+    white-space: nowrap;
+    margin-right: 4px;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  }
+
+  .icon-btn svg { display: block; }
+  .icon-btn:hover { background: var(--pink-soft); color: var(--pink-deep); }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn.danger { color: var(--pink-deep); }
+  .icon-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .icon-btn { transition: none; }
+  }
+
+  .editing-row td { background: var(--pink-soft); }
+  .editing-tag {
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--pink-deep);
+    white-space: nowrap;
+  }
+
+  /* Editing a shift happens in its own panel (reusing the same field/
+     money-input styling as "Log a shift" above, which is already proven to
+     lay out correctly on real phones) rather than inline in a table cell —
+     a table row is too cramped a space for a native date input on iOS. */
+  .editing-panel {
+    margin-top: 16px;
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-soft), var(--shadow);
+  }
+
+  .editing-panel-head {
+    grid-column: 1 / -1;
+    margin: 0 0 2px;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--pink-deep);
+  }
+
+  .edit-panel-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  #edit-shift-save {
+    flex: 1;
+    min-width: 140px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--affirm-1), var(--affirm-2));
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.15s ease;
+  }
+
+  #edit-shift-save:hover { transform: translateY(-2px); }
+  #edit-shift-save:active { transform: translateY(0); }
+  #edit-shift-save:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+  #edit-shift-cancel {
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink-dim);
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    padding: 12px 20px;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #edit-shift-save { transition: none; }
+  }
+
+  /* keep the compact row-actions column (dots / edit / trash / "Delete?")
+     from ever forcing the table wider than a narrow phone screen */
+  @media (max-width: 420px) {
+    table { font-size: 12.5px; }
+    th, td { padding: 8px 8px; }
+    .icon-btn { width: 25px; height: 25px; }
+    .confirm-text { display: none; }
+    .row-action-error { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hero-wrap">
+    <div class="confetti">
+      <svg viewBox="0 0 24 24" fill="var(--pink)"><path d="M12 21s-7-4.5-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5.5-7 10-7 10z"/></svg>
+      <svg viewBox="0 0 24 24" fill="var(--gold)"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
+      <svg viewBox="0 0 24 24" fill="var(--lav)"><path d="M12 21s-7-4.5-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5.5-7 10-7 10z"/></svg>
+      <svg viewBox="0 0 24 24" fill="var(--pink)"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
+      <svg viewBox="0 0 24 24" fill="var(--lav)"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
+      <svg viewBox="0 0 24 24" fill="var(--pink)"><path d="M12 21s-7-4.5-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5.5-7 10-7 10z"/></svg>
+      <svg viewBox="0 0 24 24" fill="var(--gold)"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
+    </div>
+
+    <div class="affirmation">
+      <span class="affirmation-icon">✨</span>
+      <span id="affirmation-text">You go girl!</span>
+      <span class="affirmation-icon delay">✨</span>
+    </div>
+
+    <div class="stats-row">
+      <div class="stats-col">
+        <div class="stat-bubble"><span class="stat-icon">💰</span><span class="stat-text" id="stat-earnings">Total earnings: $0.00</span></div>
+        <div class="stat-bubble"><span class="stat-icon">⏱️</span><span class="stat-text" id="stat-hours">Total hours worked: 0</span></div>
+        <div class="stat-bubble"><span class="stat-icon">📊</span><span class="stat-text" id="stat-avg">Average shift: $0.00/hr</span></div>
+        <div class="stat-bubble"><span class="stat-icon">💕</span><span class="stat-text" id="stat-boyfriend">Days since having the cutest boyfriend: 0</span></div>
+        <div class="stat-bubble"><span class="stat-icon">🐾</span><span class="stat-text" id="stat-kitty">Days since having the cutest kitty: 0</span></div>
+      </div>
+
+      <div class="hero-photo">
+        <img id="hero-photo-img" src="" alt="A photo of Annabelle and James" loading="eager">
+      </div>
+    </div>
+
+    <header class="hero">
+      <h1>MaciMoney</h1>
+      <p class="tagline">A sparkly little home for your money, made just for you.</p>
+    </header>
+
+    <svg class="sprig" viewBox="0 0 600 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="presentation" aria-hidden="true">
+      <path d="M0 48 C 100 48, 140 20, 220 30 C 300 40, 320 12, 400 18 C 470 23, 500 44, 600 40" stroke="var(--line)" stroke-width="1.5"/>
+      <circle cx="220" cy="30" r="4" fill="var(--pink)"/>
+      <circle cx="400" cy="18" r="4" fill="var(--lav)"/>
+      <circle cx="500" cy="42" r="4" fill="var(--gold)"/>
+    </svg>
+
+    <p class="from">for Annabelle &mdash; started September 8, 2026 🐾</p>
+  </div>
+
+  <section class="shift-section" id="log-a-shift">
+    <h2>Log a shift <span class="tag live">Live</span></h2>
+    <p class="sub">Add your card tips after each shift &mdash; pay periods total automatically, Monday through Sunday.</p>
+
+    <form class="shift-form" id="shift-form">
+      <div class="field">
+        <label for="shift-date">Date</label>
+        <input type="date" id="shift-date" required>
+      </div>
+      <div class="field">
+        <label for="shift-tips">CC tips</label>
+        <div class="money-input">
+          <span>$</span>
+          <input type="number" id="shift-tips" inputmode="decimal" step="0.01" min="0" placeholder="0.00" required>
+        </div>
+      </div>
+      <button type="submit" id="shift-submit">Log shift 🩵</button>
+      <p class="form-error" id="shift-form-error" role="alert"></p>
+      <p class="sync-note" id="sync-note"></p>
+    </form>
+
+    <form class="shift-form editing-panel" id="edit-shift-form" hidden>
+      <p class="editing-panel-head">Editing a shift</p>
+      <div class="field">
+        <label for="edit-shift-date">Date</label>
+        <input type="date" id="edit-shift-date" required>
+      </div>
+      <div class="field">
+        <label for="edit-shift-tips">CC tips</label>
+        <div class="money-input">
+          <span>$</span>
+          <input type="number" id="edit-shift-tips" inputmode="decimal" step="0.01" min="0" placeholder="0.00" required>
+        </div>
+      </div>
+      <div class="edit-panel-actions">
+        <button type="submit" id="edit-shift-save">Save changes</button>
+        <button type="button" id="edit-shift-cancel">Cancel</button>
+      </div>
+      <p class="form-error" id="edit-shift-error" role="alert"></p>
+    </form>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th class="num">CC Tips</th>
+              <th class="num">Pay Period Total</th>
+              <th class="actions-col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="shift-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-card" id="dashboard">
+      <h3>Earnings history</h3>
+      <svg id="tips-chart" viewBox="0 0 600 260" role="img" aria-label="Line chart of earnings history over time"></svg>
+    </div>
+  </section>
+
+  <section class="growing">
+    <h2>What's growing here</h2>
+    <p class="sub">Nothing's planted yet in these beds &mdash; just marking out where each one will go.</p>
+
+    <div class="beds">
+      <a class="bed" href="#dashboard" style="text-decoration:none; color:inherit;">
+        <div class="icon pink">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h18"/><path d="M6 17V10l6-5 6 5v7"/><path d="M10 17v-4h4v4"/></svg>
+        </div>
+        <div class="name">Dashboard</div>
+        <div class="desc">One view of where things stand.</div>
+        <span class="tag live">Live &uarr;</span>
+      </a>
+
+      <a class="bed" href="#log-a-shift" style="text-decoration:none; color:inherit;">
+        <div class="icon lav">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </div>
+        <div class="name">Shift log</div>
+        <div class="desc">Log your CC tips after every shift.</div>
+        <span class="tag live">Live &uarr;</span>
+      </a>
+
+      <div class="bed">
+        <div class="icon gold">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>
+        </div>
+        <div class="name">Budgets</div>
+        <div class="desc">Set the beds, watch them fill.</div>
+        <span class="tag">Coming soon</span>
+      </div>
+
+      <div class="bed">
+        <div class="icon pink">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5.5-7 10-7 10z"/></svg>
+        </div>
+        <div class="name">Goals</div>
+        <div class="desc">Things you're both saving toward.</div>
+        <span class="tag">Coming soon</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>MaciMoney 🐾</span>
+    <span>planted with <span class="heart">&hearts;</span> &mdash; more soon</span>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var messages = [
+      "You go girl! 💖",
+      "You're beautiful, inside and out! ✨",
+      "Queen of the budget, queen of my heart 👑",
+      "Look at you, saving like a total boss! 💅",
+      "Today's gonna be a good day, gorgeous! 🌸",
+      "You've absolutely got this! 💕",
+      "Small steps, big glow-up energy! 🌟",
+      "Cutest CFO I know 🐱💰",
+      "You're worth every penny, and then some 💗",
+      "Main character energy, always ✨",
+      "Proud of you, always 🥹💖",
+      "Sparkle today, save tomorrow ✨💸",
+      "Bestie, you're doing amazing 🎀",
+      "Soft life, smart budget 🌷"
+    ];
+    var el = document.getElementById('affirmation-text');
+    if (el) {
+      el.textContent = messages[Math.floor(Math.random() * messages.length)];
+    }
+  })();
+</script>
+
+<script>
+  (function () {
+    /* random header photo — one of these picked fresh on every page load */
+    var photos = [
+      'annie_w_banana_bread.jpg',
+      'annie_w_james_1.jpg',
+      'annie_w_james_2.jpg',
+      'annie_w_james_boat_1.jpg',
+      'annie_w_james_boat_2.jpg',
+      'annie_w_kitty_1.jpg',
+      'annie_w_kyle.jpg',
+      'annie_w_margeaux.jpg',
+      'baseball_1.jpg',
+      'baseball_2.jpg',
+      'cute_annie_1.jpg',
+      'disco_1.jpg',
+      'james_cooking_1.jpg',
+      'james_mirror_selfie_1.jpg',
+      'james_mirror_selfie_2.jpg',
+      'james_on_plane.jpg',
+      'james_selfie_1.jpg',
+      'james_w_tanner.jpg',
+      'james_with_popsicle.jpg'
+    ];
+    var img = document.getElementById('hero-photo-img');
+    if (img) {
+      var pick = photos[Math.floor(Math.random() * photos.length)];
+      img.src = 'photos/' + pick;
+    }
+  })();
+</script>
+
+<script>
+  (function () {
+    /* ---------- date helpers (local dates, no timezone surprises) ---------- */
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function parseISO(s) {
+      var p = s.split('-');
+      return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    }
+    function isoDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+    function isoToday() { return isoDate(new Date()); }
+    function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+    function shortDate(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+    function fmtMoney(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function fmtAxisMoney(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+    function getWeekStart(dateStr) {
+      var d = parseISO(dateStr);
+      var day = d.getDay(); // 0 Sun .. 6 Sat
+      var diff = (day + 6) % 7; // days since Monday
+      d.setDate(d.getDate() - diff);
+      return isoDate(d);
+    }
+
+    /* ---------- fallback sample data ----------
+       Only shown for an instant on first paint (and if the API is ever
+       unreachable) — the real source of truth is the /api/shifts endpoint,
+       backed by a D1 (SQLite) database, seeded with this same data. */
+    var SEED_SHIFTS = [
+      { date: '2026-07-01', ccTips: 54.98 }, { date: '2026-07-03', ccTips: 228.18 },
+      { date: '2026-07-04', ccTips: 132.37 }, { date: '2026-07-06', ccTips: 310.16 },
+      { date: '2026-07-07', ccTips: 182.31 }, { date: '2026-07-08', ccTips: 116.61 },
+      { date: '2026-07-15', ccTips: 330.36 }, { date: '2026-07-20', ccTips: 35.27 },
+      { date: '2026-07-22', ccTips: 239.78 }, { date: '2026-07-24', ccTips: 266.18 },
+      { date: '2026-07-25', ccTips: 69.00 }, { date: '2026-07-27', ccTips: 98.50 },
+      { date: '2026-07-29', ccTips: 110.28 }, { date: '2026-07-31', ccTips: 191.13 },
+      { date: '2026-08-01', ccTips: 146.18 }, { date: '2026-08-03', ccTips: 73.00 },
+      { date: '2026-08-04', ccTips: 167.20 }, { date: '2026-08-05', ccTips: 117.24 },
+      { date: '2026-08-07', ccTips: 203.30 }, { date: '2026-08-10', ccTips: 71.49 },
+      { date: '2026-08-11', ccTips: 148.48 }, { date: '2026-08-12', ccTips: 151.75 },
+      { date: '2026-08-15', ccTips: 175.52 }, { date: '2026-08-17', ccTips: 78.40 },
+      { date: '2026-08-18', ccTips: 118.82 }, { date: '2026-08-20', ccTips: 193.10 },
+      { date: '2026-08-22', ccTips: 93.90 }, { date: '2026-08-25', ccTips: 145.20 },
+      { date: '2026-08-27', ccTips: 148.76 }, { date: '2026-08-29', ccTips: 231.05 },
+      { date: '2026-08-31', ccTips: 102.85 }, { date: '2026-09-01', ccTips: 123.53 },
+      { date: '2026-09-02', ccTips: 243.70 }, { date: '2026-09-03', ccTips: 147.33 },
+      { date: '2026-09-08', ccTips: 99.99 }
+    ];
+
+    var localShifts = SEED_SHIFTS.slice();
+    var syncNote = document.getElementById('sync-note');
+
+    /* ---------- row actions: edit / delete a logged shift ----------
+       Icons for the three-dot row menu and the edit/delete affordances it
+       reveals. Kept as an object of small inline SVGs, same stroke style as
+       the icons used elsewhere on the page. */
+    var ACTION_ICONS = {
+      dots: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+      edit: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+      trash: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>',
+      check: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+      close: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>'
+    };
+
+    var editingId = null;       // id of the shift currently being edited inline
+    var openMenuId = null;      // id of the shift whose edit/delete icons are shown
+    var confirmDeleteId = null; // id of the shift showing the "Delete?" confirm
+    var rowActionError = null;  // { id, message } — inline error under a row's actions
+
+    function renderActionsCell(s) {
+      // Rows still showing the instant-paint seed data (before the server
+      // sync fills in real ids) get no menu — nothing to edit/delete yet.
+      if (s.id === undefined || s.id === null) return '';
+
+      if (editingId === s.id) {
+        return '<span class="editing-tag">Editing&hellip;</span>';
+      }
+
+      if (confirmDeleteId === s.id) {
+        var errHtml = (rowActionError && rowActionError.id === s.id)
+          ? '<span class="row-action-error">' + rowActionError.message + '</span>' : '';
+        return '<div class="row-actions confirm">' + errHtml +
+          '<span class="confirm-text">Delete?</span>' +
+          '<button type="button" class="icon-btn danger" data-action="confirm-delete" data-id="' + s.id + '" aria-label="Confirm delete">' + ACTION_ICONS.check + '</button>' +
+          '<button type="button" class="icon-btn" data-action="cancel-row-action" data-id="' + s.id + '" aria-label="Cancel">' + ACTION_ICONS.close + '</button>' +
+          '</div>';
+      }
+
+      if (openMenuId === s.id) {
+        return '<div class="row-actions">' +
+          '<button type="button" class="icon-btn" data-action="edit" data-id="' + s.id + '" aria-label="Edit shift">' + ACTION_ICONS.edit + '</button>' +
+          '<button type="button" class="icon-btn danger" data-action="delete" data-id="' + s.id + '" aria-label="Delete shift">' + ACTION_ICONS.trash + '</button>' +
+          '</div>';
+      }
+
+      return '<div class="row-actions">' +
+        '<button type="button" class="icon-btn dots" data-action="toggle-menu" data-id="' + s.id + '" aria-label="Row options">' + ACTION_ICONS.dots + '</button>' +
+        '</div>';
+    }
+
+    function closeAllRowMenus() {
+      if (openMenuId !== null || confirmDeleteId !== null || rowActionError !== null) {
+        openMenuId = null;
+        confirmDeleteId = null;
+        rowActionError = null;
+        renderTable(localShifts);
+      }
+    }
+
+    /* ---------- grouping ---------- */
+    function computePeriods(shifts) {
+      var totals = {};
+      shifts.forEach(function (s) {
+        var wk = getWeekStart(s.date);
+        totals[wk] = (totals[wk] || 0) + s.ccTips;
+      });
+      return Object.keys(totals).sort().map(function (wk) {
+        return { weekStart: wk, total: Math.round(totals[wk] * 100) / 100 };
+      });
+    }
+
+    /* ---------- header stats ---------- */
+    var BOYFRIEND_START = new Date(2026, 6, 31); // July 31, 2026
+    var KITTY_START = new Date(2026, 7, 23);     // August 23, 2026
+
+    function daysSince(startDate) {
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      var start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      return Math.floor((today - start) / 86400000);
+    }
+
+    function setStatText(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function renderHeaderStats(shifts) {
+      var totalEarnings = shifts.reduce(function (sum, s) { return sum + s.ccTips; }, 0);
+      var totalHours = shifts.length * 8;
+      var avgPerHour = totalHours > 0 ? totalEarnings / totalHours : 0;
+
+      setStatText('stat-earnings', 'Total earnings: ' + fmtMoney(totalEarnings));
+      setStatText('stat-hours', 'Total hours worked: ' + totalHours.toLocaleString('en-US'));
+      setStatText('stat-avg', 'Average shift: ' + fmtMoney(avgPerHour) + '/hr');
+      setStatText('stat-boyfriend', 'Days since having the cutest boyfriend: ' + daysSince(BOYFRIEND_START));
+      setStatText('stat-kitty', 'Days since having the cutest kitty: ' + daysSince(KITTY_START));
+    }
+
+    /* ---------- table ---------- */
+    function renderTable(shifts) {
+      renderHeaderStats(shifts);
+      var periods = computePeriods(shifts);
+      var periodInfo = {};
+      periods.forEach(function (p, i) { periodInfo[p.weekStart] = { total: p.total, band: i % 2 }; });
+
+      var sorted = shifts.slice().sort(function (a, b) {
+        if (a.date === b.date) return 0;
+        return a.date < b.date ? 1 : -1; // most recent first
+      });
+
+      var rowsEl = document.getElementById('shift-rows');
+      if (!sorted.length) {
+        rowsEl.innerHTML = '<tr><td colspan="4" class="empty">No shifts logged yet &mdash; add your first one above!</td></tr>';
+      } else {
+        rowsEl.innerHTML = sorted.map(function (s) {
+          var wk = getWeekStart(s.date);
+          var info = periodInfo[wk] || { total: s.ccTips, band: 0 };
+          var band = info.band === 0 ? 'band-a' : 'band-b';
+          if (s.id !== undefined && s.id !== null && editingId === s.id) band += ' editing-row';
+
+          return '<tr class="' + band + '">' +
+            '<td>' + shortDate(parseISO(s.date)) + '</td>' +
+            '<td class="num">' + fmtMoney(s.ccTips) + '</td>' +
+            '<td class="num total">' + fmtMoney(info.total) + '</td>' +
+            '<td class="actions-cell">' + renderActionsCell(s) + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      renderChart(periods);
+    }
+
+    /* ---------- chart ---------- */
+    function renderChart(periods) {
+      var svgEl = document.getElementById('tips-chart');
+      if (!svgEl) return;
+      if (!periods.length) { svgEl.innerHTML = ''; return; }
+
+      var W = 600, H = 260;
+      var M = { top: 18, right: 16, bottom: 34, left: 54 };
+      var innerW = W - M.left - M.right;
+      var innerH = H - M.top - M.bottom;
+
+      var times = periods.map(function (p) { return parseISO(p.weekStart).getTime(); });
+      var minT = Math.min.apply(null, times), maxT = Math.max.apply(null, times);
+      var maxV = Math.max.apply(null, periods.map(function (p) { return p.total; }));
+      var niceMax = Math.ceil((maxV * 1.15) / 200) * 200 || 200;
+
+      function x(t) { return times.length === 1 ? M.left + innerW / 2 : M.left + ((t - minT) / (maxT - minT)) * innerW; }
+      function y(v) { return M.top + innerH - (v / niceMax) * innerH; }
+
+      var todayWk = getWeekStart(isoToday());
+      var lastIsCurrent = periods[periods.length - 1].weekStart === todayWk;
+
+      var steps = 4, gridSvg = '';
+      for (var i = 0; i <= steps; i++) {
+        var v = (niceMax / steps) * i;
+        var gy = y(v);
+        gridSvg += '<line x1="' + M.left + '" x2="' + (W - M.right) + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--line)" stroke-width="1"/>';
+        gridSvg += '<text x="' + (M.left - 10) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="12" fill="var(--ink-dim)" font-family="Quicksand, sans-serif">' + fmtAxisMoney(v) + '</text>';
+      }
+
+      var maxLabels = Math.max(3, Math.floor(innerW / 58));
+      var step = Math.max(1, Math.ceil(periods.length / maxLabels));
+      var xLabelsSvg = '';
+      periods.forEach(function (p, i) {
+        if (i % step !== 0 && i !== periods.length - 1) return;
+        xLabelsSvg += '<text x="' + x(times[i]) + '" y="' + (H - M.bottom + 20) + '" text-anchor="middle" font-size="11.5" fill="var(--ink-dim)" font-family="Quicksand, sans-serif">' + shortDate(parseISO(p.weekStart)) + '</text>';
+      });
+
+      var linePts = periods.map(function (p, i) { return x(times[i]) + ',' + y(p.total); });
+      var areaD = 'M' + linePts.join(' L') + ' L' + x(times[times.length - 1]) + ',' + (M.top + innerH) + ' L' + x(times[0]) + ',' + (M.top + innerH) + ' Z';
+
+      var solidPts = (lastIsCurrent && periods.length > 1) ? linePts.slice(0, -1) : linePts;
+      var solidPathD = 'M' + solidPts.join(' L');
+
+      var dashSegment = '', currentLabel = '';
+      if (lastIsCurrent && periods.length > 1) {
+        var lastI = periods.length - 1, prevI = lastI - 1;
+        dashSegment = '<line x1="' + x(times[prevI]) + '" y1="' + y(periods[prevI].total) + '" x2="' + x(times[lastI]) + '" y2="' + y(periods[lastI].total) + '" stroke="url(#lineGrad)" stroke-width="2.5" stroke-dasharray="5 5" stroke-linecap="round"/>';
+      }
+      if (lastIsCurrent) {
+        var li = periods.length - 1;
+        currentLabel = '<text x="' + x(times[li]) + '" y="' + (y(periods[li].total) - 12) + '" text-anchor="middle" font-size="11" font-weight="700" fill="var(--pink-deep)" font-family="Quicksand, sans-serif">so far</text>';
+      }
+
+      var pointsSvg = periods.map(function (p, i) {
+        var isCurrent = lastIsCurrent && i === periods.length - 1;
+        var cx = x(times[i]), cy = y(p.total);
+        var r = isCurrent ? 5 : 4.5;
+        var fillAttr = isCurrent ? 'var(--surface)' : 'url(#lineGrad)';
+        var strokeAttr = isCurrent ? ' stroke="url(#lineGrad)" stroke-width="2.5" stroke-dasharray="3 3"' : '';
+        var rangeEnd = shortDate(addDays(parseISO(p.weekStart), 6));
+        var title = shortDate(parseISO(p.weekStart)) + '–' + rangeEnd + ': ' + fmtMoney(p.total) + (isCurrent ? ' (so far)' : '');
+        return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + fillAttr + '"' + strokeAttr + '><title>' + title + '</title></circle>';
+      }).join('');
+
+      svgEl.innerHTML =
+        '<defs>' +
+        '<linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="var(--affirm-1)"/><stop offset="100%" stop-color="var(--affirm-2)"/></linearGradient>' +
+        '<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--pink)" stop-opacity="0.28"/><stop offset="100%" stop-color="var(--pink)" stop-opacity="0"/></linearGradient>' +
+        '</defs>' +
+        gridSvg + xLabelsSvg +
+        '<path d="' + areaD + '" fill="url(#areaGrad)" stroke="none"/>' +
+        '<path d="' + solidPathD + '" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        dashSegment + pointsSvg + currentLabel;
+    }
+
+    /* ---------- server sync (Cloudflare Worker + D1) ---------- */
+    async function fetchShifts() {
+      var res = await fetch('/api/shifts', { headers: { accept: 'application/json' } });
+      if (!res.ok) throw new Error('bad status ' + res.status);
+      var data = await res.json();
+      if (!Array.isArray(data)) throw new Error('bad payload');
+      return data;
+    }
+
+    async function refreshFromServer() {
+      try {
+        var shifts = await fetchShifts();
+        if (shifts.length) {
+          localShifts = shifts;
+          renderTable(localShifts);
+        }
+        if (syncNote) syncNote.textContent = '';
+      } catch (e) {
+        if (syncNote) syncNote.textContent = "Showing saved data — couldn't reach the server just now.";
+      }
+    }
+
+    /* ---------- form ---------- */
+    function initForm() {
+      var form = document.getElementById('shift-form');
+      var dateInput = document.getElementById('shift-date');
+      var tipsInput = document.getElementById('shift-tips');
+      var errEl = document.getElementById('shift-form-error');
+      var btn = document.getElementById('shift-submit');
+      if (dateInput) dateInput.value = isoToday();
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        errEl.textContent = '';
+        var dateVal = dateInput.value;
+        var tipsVal = parseFloat(tipsInput.value);
+
+        if (!dateVal) { errEl.textContent = 'Pick a date first!'; return; }
+        if (isNaN(tipsVal) || tipsVal < 0) { errEl.textContent = 'Enter your CC tips as a number.'; return; }
+        tipsVal = Math.round(tipsVal * 100) / 100;
+
+        btn.disabled = true;
+        try {
+          var res = await fetch('/api/shifts', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ date: dateVal, ccTips: tipsVal })
+          });
+          if (!res.ok) throw new Error('save failed');
+          var saved = await res.json();
+          localShifts.push({ id: saved.id, date: saved.date, ccTips: saved.ccTips });
+          renderTable(localShifts);
+          tipsInput.value = '';
+        } catch (err) {
+          errEl.textContent = "Couldn't save that shift — check your connection and try again.";
+        }
+        btn.disabled = false;
+      });
+    }
+
+    /* ---------- row actions: wire up the three-dot menu ---------- */
+    function initTableActions() {
+      var rowsEl = document.getElementById('shift-rows');
+
+      rowsEl.addEventListener('click', async function (e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        e.stopPropagation(); // handled here — don't let the outside-click listener also fire
+
+        var action = btn.getAttribute('data-action');
+        var idAttr = btn.getAttribute('data-id');
+        var id = idAttr !== null ? Number(idAttr) : null;
+
+        if (action === 'toggle-menu') {
+          openMenuId = (openMenuId === id) ? null : id;
+          confirmDeleteId = null;
+          rowActionError = null;
+          renderTable(localShifts);
+          return;
+        }
+
+        if (action === 'edit') {
+          openMenuId = null;
+          var shift = localShifts.filter(function (s) { return s.id === id; })[0];
+          if (shift) openEditPanel(shift);
+          return;
+        }
+
+        if (action === 'delete') {
+          confirmDeleteId = id;
+          rowActionError = null;
+          renderTable(localShifts);
+          return;
+        }
+
+        if (action === 'cancel-row-action') {
+          editingId = null;
+          openMenuId = null;
+          confirmDeleteId = null;
+          rowActionError = null;
+          renderTable(localShifts);
+          return;
+        }
+
+        if (action === 'confirm-delete') {
+          btn.disabled = true;
+          try {
+            var delRes = await fetch('/api/shifts/' + id, { method: 'DELETE' });
+            if (!delRes.ok) throw new Error('delete failed');
+            localShifts = localShifts.filter(function (s) { return s.id !== id; });
+            confirmDeleteId = null;
+            rowActionError = null;
+            renderTable(localShifts);
+          } catch (err) {
+            rowActionError = { id: id, message: "Couldn't delete — try again." };
+            renderTable(localShifts);
+          }
+          return;
+        }
+      });
+
+      // Clicking anywhere else on the page closes an open row menu/confirm.
+      document.addEventListener('click', closeAllRowMenus);
+    }
+
+    /* ---------- edit panel ----------
+       A dedicated form (reusing the same field/money-input styling as
+       "Log a shift") that opens pre-filled when a row's pencil icon is
+       tapped, instead of squeezing inputs into a table cell. */
+    function openEditPanel(shift) {
+      editingId = shift.id;
+      renderTable(localShifts); // tags the row as "Editing…"
+
+      var panel = document.getElementById('edit-shift-form');
+      var dateInput = document.getElementById('edit-shift-date');
+      var tipsInput = document.getElementById('edit-shift-tips');
+      var errEl = document.getElementById('edit-shift-error');
+
+      dateInput.value = shift.date;
+      tipsInput.value = shift.ccTips;
+      errEl.textContent = '';
+      panel.hidden = false;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeEditPanel() {
+      editingId = null;
+      document.getElementById('edit-shift-form').hidden = true;
+      renderTable(localShifts);
+    }
+
+    function initEditPanel() {
+      var panel = document.getElementById('edit-shift-form');
+      var dateInput = document.getElementById('edit-shift-date');
+      var tipsInput = document.getElementById('edit-shift-tips');
+      var errEl = document.getElementById('edit-shift-error');
+      var saveBtn = document.getElementById('edit-shift-save');
+      var cancelBtn = document.getElementById('edit-shift-cancel');
+
+      cancelBtn.addEventListener('click', closeEditPanel);
+
+      panel.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        errEl.textContent = '';
+        var id = editingId;
+        if (id === null) return;
+
+        var dateVal = dateInput.value;
+        var tipsVal = parseFloat(tipsInput.value);
+
+        if (!dateVal) { errEl.textContent = 'Pick a date first!'; return; }
+        if (isNaN(tipsVal) || tipsVal < 0) { errEl.textContent = 'Enter CC tips as a number.'; return; }
+        tipsVal = Math.round(tipsVal * 100) / 100;
+
+        saveBtn.disabled = true;
+        try {
+          var res = await fetch('/api/shifts/' + id, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ date: dateVal, ccTips: tipsVal })
+          });
+          if (!res.ok) throw new Error('save failed');
+          var saved = await res.json();
+          localShifts = localShifts.map(function (s) {
+            return s.id === id ? { id: id, date: saved.date, ccTips: saved.ccTips } : s;
+          });
+          closeEditPanel();
+        } catch (err) {
+          errEl.textContent = "Couldn't save — check your connection and try again.";
+        }
+        saveBtn.disabled = false;
+      });
+    }
+
+    renderTable(localShifts); // instant first paint with sample data
+    initForm();
+    initTableActions();
+    initEditPanel();
+    refreshFromServer();      // then swap in the real, saved data
+  })();
+</script>
+</body>
+</html>
